@@ -3,7 +3,7 @@ from datetime import date
 
 def adicionar_habito(nome, frequencia):
     conn, cursor = get_db_cursor()
-    if not cursor:
+    if conn is None or cursor is None:
         return False
 
     try:
@@ -19,15 +19,20 @@ def adicionar_habito(nome, frequencia):
 
     finally:
         cursor.close()
+        conn.close()
 
 
 def listar_habitos():
     conn, cursor = get_db_cursor()
-    if not cursor:
+    if conn is None or cursor is None:
         return []
 
     try:
-        cursor.execute("SELECT * FROM habitos ORDER BY id DESC")
+        cursor.execute("""
+            SELECT id, nome, frequencia, ofensiva, ultima_vez 
+            FROM habitos 
+            ORDER BY id DESC
+        """)
         return cursor.fetchall()
 
     except Exception as e:
@@ -36,6 +41,7 @@ def listar_habitos():
 
     finally:
         cursor.close()
+        conn.close()
 
 
 def fazer_checkin(id_habito, ofensiva_atual):
@@ -43,7 +49,7 @@ def fazer_checkin(id_habito, ofensiva_atual):
     nova_ofensiva = ofensiva_atual + 1
 
     conn, cursor = get_db_cursor()
-    if not cursor:
+    if conn is None or cursor is None:
         return False
 
     try:
@@ -60,11 +66,12 @@ def fazer_checkin(id_habito, ofensiva_atual):
 
     finally:
         cursor.close()
+        conn.close()
 
 
 def excluir_habito(id_habito):
     conn, cursor = get_db_cursor()
-    if not cursor:
+    if conn is None or cursor is None:
         return False
 
     try:
@@ -77,3 +84,4 @@ def excluir_habito(id_habito):
 
     finally:
         cursor.close()
+        conn.close()
