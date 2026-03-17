@@ -1,64 +1,43 @@
-import os
-import sqlite3
 import streamlit as st
+import psycopg2
+import os
 
 # =========================================================
-# O ESCUDO DE VELOCIDADE (Evita travamentos no Streamlit)
-# =========================================================
-class CachedSQLiteConnection:
-    def __init__(self, conn):
-        self._conn = conn
-
-    def cursor(self, *args, **kwargs):
-        return self._conn.cursor(*args, **kwargs)
-
-    def commit(self):
-        return self._conn.commit()
-
-    def rollback(self):
-        return self._conn.rollback()
-
-    def close(self):
-        pass  # A mágica da velocidade: não fecha a conexão, reaproveita!
-
-    def __getattr__(self, name):
-        return getattr(self._conn, name)
-
-# =========================================================
-# CONEXÃO BLINDADA
+# CONEXÃO COM O NEON (PostgreSQL)
 # =========================================================
 @st.cache_resource(show_spinner=False)
-def _get_connection_persistente():
-    caminho_db = "database/gestao_vida.db"
-    
-    # Garante que a pasta 'database' exista antes de criar o arquivo
-    pasta = os.path.dirname(caminho_db)
-    if pasta:
-        os.makedirs(pasta, exist_ok=True)
-        
-    # check_same_thread=False evita que o app trave ao clicar rápido
-    conn = sqlite3.connect(caminho_db, check_same_thread=False)
-    conn.execute("PRAGMA foreign_keys = ON;")
-    return conn
-
 def get_connection():
-    """Use esta função nos seus services (casa_service, etc)"""
-    conn = _get_connection_persistente()
-    return CachedSQLiteConnection(conn)
+    """Conecta ao Neon usando a URL configurada nos Secrets do Streamlit"""
+    try:
+        # Puxa a URL que você colou lá nos Settings > Secrets
+        DATABASE_URL = st.secrets["connections"]["neon"]["url"]
+        
+        conn = psycopg2.connect(DATABASE_URL)
+        # O autocommit=True salva os dados na mesma hora, 
+        # dispensando a necessidade de dar conn.commit() toda vez.
+        conn.autocommit = True 
+        return conn
+    except Exception as e:
+        st.error(f"Erro ao conectar no banco Neon: {e}")
+        return None
 
 # =========================================================
 # CRIAÇÃO DAS TABELAS (O ESQUELETO DO APP)
 # =========================================================
 def criar_tabelas():
-    """Roda toda vez que o app.py inicia para garantir que as tabelas existam"""
+    """Roda toda vez que o app inicia para garantir que as tabelas existam no Neon"""
     conn = get_connection()
+    if conn is None:
+        return
+        
     cursor = conn.cursor()
 
     try:
         # 1. Tabela da ABA CASA (Compras)
+        # NOTA: AUTOINCREMENT agora é SERIAL
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS compras (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 item TEXT NOT NULL,
                 categoria TEXT NOT NULL,
                 preco REAL NOT NULL,
@@ -70,7 +49,7 @@ def criar_tabelas():
         # 2. Tabela da ABA METAS (Objetivos de vida)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS metas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 titulo TEXT NOT NULL,
                 categoria TEXT NOT NULL,
                 data_limite DATE,
@@ -82,7 +61,7 @@ def criar_tabelas():
         # 3. Tabela da ABA HÁBITOS (O tracker diário)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS habitos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
                 frequencia TEXT NOT NULL,
                 ofensiva INTEGER DEFAULT 0,
@@ -93,7 +72,7 @@ def criar_tabelas():
         # 4. Tabela da ABA FINANCEIRO (Suas finanças pessoais)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS financeiro (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 tipo TEXT NOT NULL,
                 descricao TEXT NOT NULL,
                 valor REAL NOT NULL,
@@ -102,8 +81,7 @@ def criar_tabelas():
             )
         """)
 
-        conn.commit()
     except Exception as e:
-        print(f"Erro ao criar tabelas: {e}")
+        print(f"Erro ao criar tabelas no Neon: {e}")
     finally:
         cursor.close()
