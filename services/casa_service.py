@@ -1,15 +1,9 @@
-from database.database import get_connection
+from database.database import get_db_cursor
 
-# ==========================
-# ADICIONAR COMPRA
-# ==========================
 def adicionar_compra(item, categoria, preco, data):
-    conn = get_connection()
-    if conn is None: return False
-    cursor = conn.cursor()
-    
+    conn, cursor = get_db_cursor()
+    if not cursor: return False
     try:
-        # Trocado ? por %s
         cursor.execute("""
             INSERT INTO compras (item, categoria, preco, data_compra, status)
             VALUES (%s, %s, %s, %s, 'pendente')
@@ -22,18 +16,12 @@ def adicionar_compra(item, categoria, preco, data):
         cursor.close()
         conn.close()
 
-# ==========================
-# LISTAR COMPRAS
-# ==========================
 def listar_compras():
-    conn = get_connection()
-    if conn is None: return []
-    cursor = conn.cursor()
-    
+    conn, cursor = get_db_cursor()
+    if not cursor: return []
     try:
-        cursor.execute("SELECT * FROM compras")
-        dados = cursor.fetchall()
-        return dados
+        cursor.execute("SELECT id, item, categoria, preco, data_compra, status FROM compras ORDER BY id DESC")
+        return cursor.fetchall()
     except Exception as e:
         print(f"Erro ao listar compras: {e}")
         return []
@@ -41,21 +29,11 @@ def listar_compras():
         cursor.close()
         conn.close()
 
-# ==========================
-# MARCAR COMO COMPRADO
-# ==========================
 def marcar_comprado(id):
-    conn = get_connection()
-    if conn is None: return False
-    cursor = conn.cursor()
-    
+    conn, cursor = get_db_cursor()
+    if not cursor: return False
     try:
-        # Trocado ? por %s
-        cursor.execute("""
-            UPDATE compras
-            SET status = 'comprado'
-            WHERE id = %s
-        """, (id,))
+        cursor.execute("UPDATE compras SET status = 'comprado' WHERE id = %s", (id,))
         return True
     except Exception as e:
         print(f"Erro ao marcar comprado: {e}")
@@ -64,20 +42,11 @@ def marcar_comprado(id):
         cursor.close()
         conn.close()
 
-# ==========================
-# EXCLUIR ITEM
-# ==========================
 def excluir_compra(id):
-    conn = get_connection()
-    if conn is None: return False
-    cursor = conn.cursor()
-    
+    conn, cursor = get_db_cursor()
+    if not cursor: return False
     try:
-        # Trocado ? por %s
-        cursor.execute("""
-            DELETE FROM compras
-            WHERE id = %s
-        """, (id,))
+        cursor.execute("DELETE FROM compras WHERE id = %s", (id,))
         return True
     except Exception as e:
         print(f"Erro ao excluir compra: {e}")
