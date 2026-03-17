@@ -1,3 +1,11 @@
+import streamlit as st
+import psycopg2
+import os
+
+# O restante do código vem aqui embaixo...
+@st.cache_resource(show_spinner=False)
+def get_connection():
+    # ... (resto do código que te mandei antes)
 @st.cache_resource(show_spinner=False)
 def get_connection():
     """Conecta ao Neon e garante que a conexão está ativa"""
