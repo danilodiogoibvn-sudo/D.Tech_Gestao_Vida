@@ -2,7 +2,7 @@ from database.database import get_db_cursor
 
 def adicionar_meta(titulo, categoria, data_limite):
     conn, cursor = get_db_cursor()
-    if not cursor:
+    if conn is None or cursor is None:
         return False
 
     try:
@@ -18,16 +18,18 @@ def adicionar_meta(titulo, categoria, data_limite):
 
     finally:
         cursor.close()
+        conn.close()
 
 
 def listar_metas():
     conn, cursor = get_db_cursor()
-    if not cursor:
+    if conn is None or cursor is None:
         return []
 
     try:
         cursor.execute("""
-            SELECT * FROM metas
+            SELECT id, titulo, categoria, data_limite, progresso, status
+            FROM metas
             ORDER BY status ASC, data_limite ASC
         """)
         return cursor.fetchall()
@@ -38,6 +40,7 @@ def listar_metas():
 
     finally:
         cursor.close()
+        conn.close()
 
 
 def atualizar_progresso(id_meta, progresso_atual, incremento):
@@ -45,7 +48,7 @@ def atualizar_progresso(id_meta, progresso_atual, incremento):
     status = 'concluída' if novo_progresso == 100 else 'ativa'
 
     conn, cursor = get_db_cursor()
-    if not cursor:
+    if conn is None or cursor is None:
         return False
 
     try:
@@ -62,11 +65,12 @@ def atualizar_progresso(id_meta, progresso_atual, incremento):
 
     finally:
         cursor.close()
+        conn.close()
 
 
 def excluir_meta(id_meta):
     conn, cursor = get_db_cursor()
-    if not cursor:
+    if conn is None or cursor is None:
         return False
 
     try:
@@ -79,3 +83,4 @@ def excluir_meta(id_meta):
 
     finally:
         cursor.close()
+        conn.close()
