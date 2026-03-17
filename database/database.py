@@ -1,54 +1,49 @@
 import streamlit as st
 import psycopg2
-import os
 
 # =========================================================
 # CONEXÃO COM O NEON (PostgreSQL)
 # =========================================================
 @st.cache_resource(show_spinner=False)
 def get_connection():
-    """Conecta ao Neon e garante que a conexão está ativa"""
     try:
-        # Puxa a URL que você colou lá nos Settings > Secrets
         DATABASE_URL = st.secrets["connections"]["neon"]["url"]
-        
         conn = psycopg2.connect(DATABASE_URL)
-        # O autocommit=True salva os dados na mesma hora
-        conn.autocommit = True 
+        conn.autocommit = True
         return conn
     except Exception as e:
         st.error(f"Erro crítico de conexão: {e}")
         return None
 
+
 def get_db_cursor():
-    """Função auxiliar para sempre pegar um cursor novo e validar a conexão"""
     conn = get_connection()
     if conn is None:
         return None, None
+
     try:
-        # Testa se a conexão ainda está viva
         cur = conn.cursor()
-        cur.execute("SELECT 1") 
+        cur.execute("SELECT 1")
         return conn, cur
+
     except (psycopg2.InterfaceError, psycopg2.OperationalError):
-        # Se a conexão caiu, limpa o cache e tenta de novo uma vez
+        # Recria conexão se morrer
         st.cache_resource.clear()
         conn = get_connection()
-        return conn, conn.cursor()
+        if conn:
+            return conn, conn.cursor()
+        return None, None
+
 
 # =========================================================
-# CRIAÇÃO DAS TABELAS (O ESQUELETO DO APP NO NEON)
+# CRIAÇÃO DAS TABELAS
 # =========================================================
 def criar_tabelas():
-    """Roda toda vez que o app inicia para garantir que as tabelas existam"""
-    conn = get_connection()
-    if conn is None:
+    conn, cursor = get_db_cursor()
+    if not cursor:
         return
-        
-    cursor = conn.cursor()
 
     try:
-        # 1. Tabela de Compras (Aba Casa)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS compras (
                 id SERIAL PRIMARY KEY,
@@ -60,7 +55,6 @@ def criar_tabelas():
             )
         """)
 
-        # 2. Tabela de Metas
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS metas (
                 id SERIAL PRIMARY KEY,
@@ -72,7 +66,6 @@ def criar_tabelas():
             )
         """)
 
-        # 3. Tabela de Hábitos
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS habitos (
                 id SERIAL PRIMARY KEY,
@@ -83,7 +76,6 @@ def criar_tabelas():
             )
         """)
 
-        # 4. Tabela Financeira
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS financeiro (
                 id SERIAL PRIMARY KEY,
@@ -96,7 +88,7 @@ def criar_tabelas():
         """)
 
     except Exception as e:
-        print(f"Erro ao criar tabelas no Neon: {e}")
+        print(f"Erro ao criar tabelas: {e}")
+
     finally:
         cursor.close()
-        # Não fechamos a conn aqui pois ela é gerenciada pelo cache_resource
